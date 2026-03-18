@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Luxury Store</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
+body{background:#000;color:#fff;}
+
+.bg{
+position:fixed;inset:0;
+background:url('bg.jpg') center/cover no-repeat;
+z-index:-2;
+}
+
+.overlay{
+position:fixed;inset:0;
+background:rgba(0,0,0,0.6);
+backdrop-filter:blur(10px);
+z-index:-1;
+}
+
+header{
+display:flex;justify-content:space-between;
+padding:18px;
+font-size:20px;font-weight:600;
+}
+
+.cart{
+cursor:pointer;
+background:rgba(255,255,255,0.1);
+padding:6px 12px;border-radius:20px;
+}
+
+.post{
+margin:20px;padding:15px;
+background:rgba(255,255,255,0.08);
+border-radius:25px;
+backdrop-filter:blur(20px);
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(2,1fr);
+gap:12px;
+}
+
+.item{position:relative;cursor:pointer;}
+.item img{width:100%;border-radius:15px;}
+
+.price{
+position:absolute;bottom:8px;left:8px;
+background:#25D366;
+padding:5px 10px;border-radius:10px;
+}
+
+/* CART */
+.cartBox{
+position:fixed;right:-100%;top:0;
+width:320px;height:100%;
+background:#111;padding:20px;
+transition:0.4s;
+}
+.cartBox.active{right:0;}
+
+.remove{color:red;cursor:pointer;margin-left:6px;}
+
+/* FORM */
+.formPage{
+position:fixed;inset:0;
+display:none;justify-content:center;align-items:center;
+background:rgba(0,0,0,0.8);
+}
+
+.formBox{
+background:#111;padding:20px;border-radius:15px;
+width:90%;max-width:400px;
+}
+
+.formBox input{
+width:100%;padding:10px;margin:6px 0;
+border:none;border-radius:8px;
+}
+
+.btn{
+width:100%;padding:10px;margin-top:10px;
+border:none;border-radius:10px;
+cursor:pointer;
+}
+
+.green{background:#25D366;color:#fff;}
+.red{background:red;color:#fff;}
+</style>
+</head>
+
+<body>
+
+<div class="bg"></div>
+<div class="overlay"></div>
+
+<header>
+<div>Exclusive cloth storee 🍃</div>
+<div class="cart" onclick="toggleCart()">🛒 (<span id="count">0</span>)</div>
+</header>
+
+<div id="container"></div>
+
+<!-- CART -->
+<div class="cartBox" id="cartBox">
+<h3>Your Cart</h3>
+<div id="cartItems"></div>
+<div id="total"></div>
+<button class="btn green" onclick="openForm()">Checkout</button>
+<button class="btn red" onclick="toggleCart()">Close</button>
+</div>
+
+<!-- FORM -->
+<div class="formPage" id="formPage">
+<div class="formBox">
+<h3>Enter Details</h3>
+<input id="name" placeholder="Name">
+<input id="phone" placeholder="Phone">
+<input id="address" placeholder="Address">
+<button class="btn green" onclick="placeOrder()">Place Order</button>
+<button class="btn red" onclick="closeForm()">Cancel</button>
+</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<script>
+
+/* FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "AIzaSyCSsYuiHD7qfcgq8EPRh2zqeC_drAibR3I",
+  authDomain: "business-e3d7e.firebaseapp.com",
+  projectId: "business-e3d7e"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+/* SETTINGS */
+const PHONE="916264628191";
+const UPI="yourupi@upi";
+
+/* =========================
+   PRODUCT TEMPLATE
+{code:"PXXX",name:"Product",price:000,img:"images/img.jpg"},
+========================= */
+
+const products = [
+{code:"P101",name:"Black Hoodie",price:899,img:"img1.jpg"},
+{code:"P102",name:"White T-Shirt",price:499,img:"img2.jpg"},
+{code:"P103",name:"Denim Jacket",price:1599,img:"img3.jpg"},
+{code:"P104",name:"Cargo Pants",price:1199,img:"img4.jpg"},
+{code:"P105",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P106",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P107",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P108",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P109",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P110",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P111",name:"Black Hoodie",price:899,img:"img1.jpg"},
+{code:"P112",name:"White T-Shirt",price:499,img:"img2.jpg"},
+{code:"P113",name:"Denim Jacket",price:1599,img:"img3.jpg"},
+{code:"P114",name:"Cargo Pants",price:1199,img:"img4.jpg"},
+{code:"P115",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P116",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P117",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P118",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P119",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P120",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P121",name:"Black Hoodie",price:899,img:"img1.jpg"},
+{code:"P122",name:"White T-Shirt",price:499,img:"img2.jpg"},
+{code:"P123",name:"Denim Jacket",price:1599,img:"img3.jpg"},
+{code:"P124",name:"Cargo Pants",price:1199,img:"img4.jpg"},
+{code:"P125",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P126",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P127",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P128",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P129",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P130",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P131",name:"Black Hoodie",price:899,img:"img1.jpg"},
+{code:"P132",name:"White T-Shirt",price:499,img:"img2.jpg"},
+{code:"P133",name:"Denim Jacket",price:1599,img:"img3.jpg"},
+{code:"P134",name:"Cargo Pants",price:1199,img:"img4.jpg"},
+{code:"P135",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P136",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P137",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P138",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P139",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P140",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P141",name:"Black Hoodie",price:899,img:"img1.jpg"},
+{code:"P142",name:"White T-Shirt",price:499,img:"img2.jpg"},
+{code:"P143",name:"Denim Jacket",price:1599,img:"img3.jpg"},
+{code:"P144",name:"Cargo Pants",price:1199,img:"img4.jpg"},
+{code:"P145",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P146",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P147",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P148",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P149",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P150",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P151",name:"Black Hoodie",price:899,img:"img1.jpg"},
+{code:"P152",name:"White T-Shirt",price:499,img:"img2.jpg"},
+{code:"P153",name:"Denim Jacket",price:1599,img:"img3.jpg"},
+{code:"P154",name:"Cargo Pants",price:1199,img:"img4.jpg"},
+{code:"P155",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P156",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P157",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P158",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P159",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P160",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P161",name:"Black Hoodie",price:899,img:"img1.jpg"},
+{code:"P162",name:"White T-Shirt",price:499,img:"img2.jpg"},
+{code:"P163",name:"Denim Jacket",price:1599,img:"img3.jpg"},
+{code:"P164",name:"Cargo Pants",price:1199,img:"img4.jpg"},
+{code:"P165",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P166",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P167",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P168",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P169",name:"Cargos Pants",price:199,img:"img5.jpg"},
+{code:"P170",name:"Cargos Pants",price:199,img:"img5.jpg"},
+];
+
+let cart=[];
+
+/* RENDER */
+function render(){
+let html=`<div class="post"><div class="grid">`;
+
+products.forEach(p=>{
+html+=`
+<div class="item" onclick="addToCart('${p.name}',${p.price},'${p.img}','${p.code}')">
+<img src="${p.img}">
+<div class="price">₹${p.price}</div>
+</div>`;
+});
+
+html+=`</div></div>`;
+document.getElementById("container").innerHTML=html;
+}
+
+/* CART */
+function addToCart(name,price,img,code){
+let item=cart.find(i=>i.code===code);
+if(item)item.qty++;
+else cart.push({name,price,img,code,qty:1});
+updateCart();
+}
+
+function removeItem(i){
+cart.splice(i,1);
+updateCart();
+}
+
+function updateCart(){
+let html="",total=0,count=0;
+
+cart.forEach((item,i)=>{
+total+=item.price*item.qty;
+count+=item.qty;
+
+html+=`
+🆔 ${item.code} - ${item.name} x${item.qty} - ₹${item.price*item.qty}
+<span class="remove" onclick="removeItem(${i})">❌</span><br>
+`;
+});
+
+document.getElementById("cartItems").innerHTML=html;
+document.getElementById("total").innerText="Total: ₹"+total;
+document.getElementById("count").innerText=count;
+}
+
+/* UI */
+function toggleCart(){
+document.getElementById("cartBox").classList.toggle("active");
+}
+
+function openForm(){
+if(cart.length===0)return alert("Cart empty");
+document.getElementById("formPage").style.display="flex";
+}
+
+function closeForm(){
+document.getElementById("formPage").style.display="none";
+}
+
+/* ORDER */
+function placeOrder(){
+
+let name=document.getElementById("name").value.trim();
+let phone=document.getElementById("phone").value.trim();
+let address=document.getElementById("address").value.trim();
+
+if(!name||!phone||!address){
+alert("Fill all details");
+return;
+}
+
+let orderID="ORD"+Date.now();
+let total=0;
+
+let msg=`🧾 Order ID: ${orderID}\n\n`;
+
+cart.forEach(item=>{
+total+=item.price*item.qty;
+
+msg+=`🆔 ${item.code}\n${item.name} x${item.qty} - ₹${item.price*item.qty}\n`;
+msg+=`🖼 ${item.img}\n\n`;
+});
+
+msg+=`Total: ₹${total}\n\n👤 ${name}\n📞 ${phone}\n🏠 ${address}`;
+
+/* FIREBASE */
+db.collection("orders").add({
+orderID,name,phone,address,cart,total,time:Date.now()
+});
+
+/* WHATSAPP */
+window.open(`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`);
+
+/* UPI */
+window.open(`upi://pay?pa=${UPI}&pn=Store&am=${total}&cu=INR`);
+
+cart=[];
+updateCart();
+closeForm();
+
+alert("Order Sent 🔥");
+}
+
+render();
+
+</script>
+
+</body>
+</html>
